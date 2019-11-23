@@ -59,5 +59,6 @@ if __name__ == '__main__':
     print(csv.groupby('endpoint')['dur_ttl', 'dur_outer'])
     #csv['endpoint'] =
     #csv.groupby('endpoint').to_csv('endpoint.csv', sep=';')
+    #kek
     print('Done in :', perf_counter() - start)
     exit(0)
