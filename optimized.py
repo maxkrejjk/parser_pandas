@@ -6,6 +6,7 @@ from time import perf_counter
 import pandas
 
 parser = argparse.ArgumentParser(description='Log parser')
+# noinspection PyTypeChecker
 parser.add_argument('infile', type=Path, help='Log filename')
 argv = parser.parse_args()
 start = perf_counter()
@@ -20,7 +21,6 @@ if __name__ == '__main__':
                           engine='c', parse_dates=['date'], infer_datetime_format=True, cache_dates=True,
                           encoding='utf-8')
     logged = csv[csv['token'] != '-'].rename(columns={'dur_ttl': 'l_dur_ttl', 'dur_outer': 'l_dur_outer'})
-
     # Code by Date
     by_date = csv.resample('D', on='date').sum().join(logged.resample('D', on='date').sum())
     by_date.fillna(0).to_csv('by_date.csv', sep=';')
@@ -47,18 +47,22 @@ if __name__ == '__main__':
     by_session = csv.groupby('token')['date_start', 'date_end',
                                       'method', 'dur_ttl', 'dur_outer'].agg({'date_start': 'min', 'date_end': 'max',
                                                                              'method': 'count', 'dur_ttl': 'sum',
-                                                                             'dur_outer': 'sum'}).to_csv('by_session'
-                                                                                                         '.csv',
-                                                                                                         sep=';')
+                                                                             'dur_outer': 'sum', }).to_csv('by_session'
+                                                                                                           '.csv',
+                                                                                                           sep=';')
 
-    # Code by Endpoint
+    csv['count'] = csv['token'].apply(lambda x: 1)
+    csv.token = csv['token'].apply(lambda x: ('+' if x != '-' else x))
+
+
     def regex(string):
-        return re.findall(r'^http:\/\/[a-z]+.+\/+[a-z]+\/', string)
+        a = re.search(r'^http:\/\/[a-z]+.+\/+[a-z]+\/', string)
+        if a is None:
+            return ''
+        else:
+            return a.group(0)
+
 
     csv['endpoint'] = csv['url'].apply(regex)
-    print(csv.groupby('endpoint')['dur_ttl', 'dur_outer'])
-    #csv['endpoint'] =
-    #csv.groupby('endpoint').to_csv('endpoint.csv', sep=';')
-    #kek
-    print('Done in :', perf_counter() - start)
-    exit(0)
+    csv.groupby(['endpoint', 'token', 'url'])['dur_ttl', 'dur_outer', 'count'].sum().to_csv('by_endpoint.csv', sep=';')
+    print('Done in ', perf_counter() - start)
